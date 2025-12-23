@@ -38,8 +38,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
+# Copy dependency files from backend directory
+COPY backend/pyproject.toml backend/uv.lock .
 
 # Install dependencies using uv
 RUN uv sync --frozen --no-cache
@@ -47,8 +47,8 @@ RUN uv sync --frozen --no-cache
 # Install Playwright browsers
 RUN uv run playwright install chromium
 
-# Copy application code
-COPY . .
+# Copy the entire backend application code
+COPY backend/ .
 
 # Ensure chroma_db directory exists
 RUN mkdir -p chroma_db
