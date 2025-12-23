@@ -6,30 +6,11 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
-# Install system dependencies for Playwright
+# Install system dependencies
+# We include basic tools and then use playwright's own dependency installer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxcb1 \
-    libxkbcommon0 \
-    libx11-6 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    librandr2 \
-    libgbm1 \
-    libasound2 \
-    libpangocairo-1.0-0 \
-    libpango-1.0-0 \
-    libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -39,12 +20,16 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # Copy dependency files from backend directory
-COPY backend/pyproject.toml backend/uv.lock .
+COPY backend/pyproject.toml backend/uv.lock backend/README.md ./
 
 # Install dependencies using uv
-RUN uv sync --frozen --no-cache
+# --no-install-project skips installing the 'retake-backend' package itself
+# allowing us to cache dependencies separately from source code.
+RUN uv sync --frozen --no-cache --no-install-project
 
-# Install Playwright browsers
+# Install Playwright and its system dependencies
+# 'install-deps' will install all necessary libraries for chromium
+RUN uv run playwright install-deps chromium
 RUN uv run playwright install chromium
 
 # Copy the entire backend application code
