@@ -1,0 +1,44 @@
+# Secrets & Environment
+.env
+.env.*
+!.env.example
+
+# Database
+chroma_db/
+backend/chroma_db/
+
+# Python (Backend)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+backend/.venv/
+backend/.pytest_cache/
+backend/app/__pycache__/
+uv.lock
+
+# Node / Bun (Frontend)
+node_modules/
+frontend/node_modules/
+dist/
+.output/
+.nitro/
+.tanstack/
+.vinxi/
+.wrangler/
+.vite/
+bun.lockb
+
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/
+.gemini/
+
+# Logs
+logs/
+*.log
+
+scripts/
+reference_archive/
