@@ -16,7 +16,6 @@ __pycache__/
 backend/.venv/
 backend/.pytest_cache/
 backend/app/__pycache__/
-uv.lock
 
 # Node / Bun (Frontend)
 node_modules/
