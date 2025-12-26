@@ -19,21 +19,18 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files from backend directory
-COPY backend/pyproject.toml backend/uv.lock backend/README.md ./
+# Copy dependency files from current context (backend directory)
+COPY pyproject.toml uv.lock README.md ./
 
 # Install dependencies using uv
-# --no-install-project skips installing the 'retake-backend' package itself
-# allowing us to cache dependencies separately from source code.
 RUN uv sync --frozen --no-cache --no-install-project
 
 # Install Playwright and its system dependencies
-# 'install-deps' will install all necessary libraries for chromium
 RUN uv run playwright install-deps chromium
 RUN uv run playwright install chromium
 
-# Copy the entire backend application code
-COPY backend/ .
+# Copy the application code from current context (backend directory)
+COPY . .
 
 # Ensure chroma_db directory exists
 RUN mkdir -p chroma_db
