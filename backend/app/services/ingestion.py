@@ -4,6 +4,8 @@ from typing import Dict, Any, List, Optional
 import logging
 from app.core.db import get_chroma_service
 from app.core.supabase import get_supabase
+from app.core.config import get_settings
+from google import genai
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,7 @@ class IngestionService:
         self.settings = get_settings()
         self.chroma = None
         self.collection = None
-        
+
         if self.settings.USE_CHROMA:
             self.chroma = get_chroma_service()
             self.collection = self.chroma.get_collection("matches")
@@ -20,6 +22,26 @@ class IngestionService:
             logger.info("ChromaDB is disabled. Skipping local vector store initialization.")
 
         self.supabase = get_supabase()
+
+        # Initialize Gemini client for embeddings
+        self.gemini_client = None
+        if self.settings.GEMINI_API_KEY:
+            self.gemini_client = genai.Client(api_key=self.settings.GEMINI_API_KEY)
+
+    def _generate_embedding(self, text: str) -> List[float]:
+        """Generate embedding vector using Gemini."""
+        if not self.gemini_client:
+            return None
+        try:
+            result = self.gemini_client.models.embed_content(
+                model="models/text-embedding-004",
+                contents=text,
+                config={"task_type": "RETRIEVAL_DOCUMENT"}
+            )
+            return result.embeddings[0].values
+        except Exception as e:
+            logger.error(f"Embedding generation failed: {e}")
+            return None
 
     def _generate_id(self, data: Dict[str, Any]) -> str:
         """Deterministic MD5 hash for idempotency."""
@@ -81,8 +103,11 @@ class IngestionService:
             cleaned_meta = {k: v for k, v in r.items() if isinstance(v, (str, int, float, bool))}
             metadatas.append(cleaned_meta)
 
+            # Generate embedding for Supabase
+            embedding = self._generate_embedding(doc_text)
+
             # Supabase Record
-            supabase_rounds.append({
+            supabase_record = {
                 "external_id": doc_id,
                 "match_id": match_uuid,
                 "match_id_rib": match_id_rib,
@@ -98,7 +123,10 @@ class IngestionService:
                 "score_a": r.get('score_a'),
                 "score_b": r.get('score_b'),
                 "map_name": r.get('map_name')
-            })
+            }
+            if embedding:
+                supabase_record["embedding"] = embedding
+            supabase_rounds.append(supabase_record)
 
         # 4. Finalize Ingestion
         if self.collection:
