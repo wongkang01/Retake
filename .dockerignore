@@ -1,0 +1,14 @@
+# Frontend
+frontend/
+node_modules/
+
+# Python
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
+
+# Git
+.git/
+
+# OS
+.DS_Store

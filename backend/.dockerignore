@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+*.pyc
+
+# Local data
+chroma_db/
+
+# OS
+.DS_Store
+
+# Tests
+tests/
