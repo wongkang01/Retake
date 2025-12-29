@@ -136,7 +136,7 @@ async def query_matches(request: QueryRequest):
                 "filter_is_pistol": True if detected_round_type == "pistol" else None
             }
             
-            rpc_res = supabase.rpc("match_rounds", rpc_params).execute()
+            rpc_res = supabase.rpc("match_rounds", params=rpc_params).execute()
             
             for row in rpc_res.data:
                 formatted_results.append({
