@@ -125,22 +125,18 @@ async def query_matches(request: QueryRequest):
     
     if supabase and query_vector:
         try:
-            # Prepare RPC parameters - only include non-None values
+            # Prepare RPC parameters - pass all params explicitly
             rpc_params = {
                 "query_embedding": query_vector,
                 "match_threshold": 0.5,
                 "match_count": 20,
+                "filter_team_slug": detected_team_slug if detected_team_slug else None,
+                "filter_map_name": detected_map.capitalize() if detected_map else None,
+                "filter_round_type": detected_round_type.lower() if detected_round_type else None,
+                "filter_is_pistol": True if detected_round_type == "pistol" else None
             }
-            if detected_team_slug:
-                rpc_params["filter_team_slug"] = detected_team_slug
-            if detected_map:
-                rpc_params["filter_map_name"] = detected_map.capitalize()
-            if detected_round_type:
-                rpc_params["filter_round_type"] = detected_round_type.lower()
-            if detected_round_type == "pistol":
-                rpc_params["filter_is_pistol"] = True
 
-            logger.info(f"RPC params (excluding embedding): team={rpc_params.get('filter_team_slug')}, map={rpc_params.get('filter_map_name')}, round_type={rpc_params.get('filter_round_type')}")
+            logger.info(f"RPC params: team={rpc_params.get('filter_team_slug')}, map={rpc_params.get('filter_map_name')}, round_type={rpc_params.get('filter_round_type')}")
             rpc_res = supabase.rpc("match_rounds", rpc_params).execute()
             logger.info(f"RPC returned {len(rpc_res.data)} results")
 
