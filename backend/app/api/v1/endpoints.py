@@ -125,18 +125,22 @@ async def query_matches(request: QueryRequest):
     
     if supabase and query_vector:
         try:
-            # Prepare RPC parameters
+            # Prepare RPC parameters - only include non-None values
             rpc_params = {
                 "query_embedding": query_vector,
-                "match_threshold": 0.5, # Cosine similarity threshold
+                "match_threshold": 0.5,
                 "match_count": 20,
-                "filter_team_slug": detected_team_slug,
-                "filter_map_name": detected_map.capitalize() if detected_map else None,
-                "filter_round_type": detected_round_type.lower() if detected_round_type else None,
-                "filter_is_pistol": True if detected_round_type == "pistol" else None
             }
-            
-            rpc_res = supabase.rpc("match_rounds", params=rpc_params).execute()
+            if detected_team_slug:
+                rpc_params["filter_team_slug"] = detected_team_slug
+            if detected_map:
+                rpc_params["filter_map_name"] = detected_map.capitalize()
+            if detected_round_type:
+                rpc_params["filter_round_type"] = detected_round_type.lower()
+            if detected_round_type == "pistol":
+                rpc_params["filter_is_pistol"] = True
+
+            rpc_res = supabase.rpc("match_rounds", rpc_params).execute()
             
             for row in rpc_res.data:
                 formatted_results.append({
