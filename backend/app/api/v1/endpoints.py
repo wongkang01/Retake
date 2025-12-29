@@ -140,8 +140,10 @@ async def query_matches(request: QueryRequest):
             if detected_round_type == "pistol":
                 rpc_params["filter_is_pistol"] = True
 
+            logger.info(f"RPC params (excluding embedding): team={rpc_params.get('filter_team_slug')}, map={rpc_params.get('filter_map_name')}, round_type={rpc_params.get('filter_round_type')}")
             rpc_res = supabase.rpc("match_rounds", rpc_params).execute()
-            
+            logger.info(f"RPC returned {len(rpc_res.data)} results")
+
             for row in rpc_res.data:
                 formatted_results.append({
                     "id": row["external_id"],
