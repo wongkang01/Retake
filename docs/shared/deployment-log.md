@@ -13,6 +13,7 @@ This document tracks the attempts made to deploy the Retake backend to Railway a
 | 5 | Build Context Confusion | Mismatch between Railway root context and Dockerfile subdirectory expectations. | Switched to `context = "."` in `railway.toml` and updated Dockerfile paths. |
 | 6 | `pyproject.toml` not found | With `context = "backend"`, the build failed to locate the config file despite being in the same folder. | (Unresolved) Likely requires setting "Root Directory" in Railway UI. |
 | 7 | `dockerfilePath` mismatch | `dockerfilePath = "backend/Dockerfile"` was relative to repo root, not the context. With `context = "backend"`, Railway looked for `backend/backend/Dockerfile`. | Changed `dockerfilePath` to `"Dockerfile"` (relative to context). Added `backend/.dockerignore`. |
+| 8 | Railway ignores `context` | Railway does not respect `context = "backend"` in `railway.toml`, looks for Dockerfile in repo root. | Removed `context`, use `dockerfilePath = "backend/Dockerfile"`, updated Dockerfile COPY paths to use `backend/` prefix. |
 
 ## Detailed Breakdown
 ...
