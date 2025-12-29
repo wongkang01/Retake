@@ -54,7 +54,8 @@ export function FindView() {
 
   const extractVideoId = (url?: string) => {
     if (!url) return undefined;
-    const match = url.match(/(?:v=|\[0-9A-Za-z_-]{11}).*/);
+    // Match YouTube video ID after v= parameter
+    const match = url.match(/[?&]v=([0-9A-Za-z_-]{11})/);
     return match ? match[1] : undefined;
   };
 

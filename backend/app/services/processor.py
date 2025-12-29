@@ -119,7 +119,12 @@ class MatchDataProcessor:
                     round_vod_timestamp_sec = vod_start_sec + (offset_ms / 1000)
                     
                     # Construct specific VOD URL
-                    round_vod_url = f"{base_vod_url}&t={int(round_vod_timestamp_sec)}s" if base_vod_url else None
+                    # Use ? if no query params exist, otherwise use &
+                    if base_vod_url:
+                        separator = "&" if "?" in base_vod_url else "?"
+                        round_vod_url = f"{base_vod_url}{separator}t={int(round_vod_timestamp_sec)}s"
+                    else:
+                        round_vod_url = None
                     winner_name = team1_name if winner_num == 1 else team2_name
                     
                     # Metadata construction
