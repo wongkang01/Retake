@@ -38,5 +38,5 @@ RUN mkdir -p chroma_db
 # Expose the port
 EXPOSE 8000
 
-# Command to run the application
-CMD uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+# Command to run the application (shell form for variable expansion)
+CMD ["sh", "-c", "uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
