@@ -1,12 +1,16 @@
--- Fix RPC vector parameter handling for PostgREST compatibility
+-- Fix RPC vector parameter handling and implement correct hybrid search logic
 -- PostgREST handles float[] (JSON array) better than vector type directly
+-- Similarity threshold only applies when NO metadata filters are present
 
 -- Drop existing function variants
 DROP FUNCTION IF EXISTS match_rounds(vector(768), float, int, text, text, text, boolean);
 DROP FUNCTION IF EXISTS match_rounds(float[], float, int, text, text, text, boolean);
 DROP FUNCTION IF EXISTS match_rounds(double precision[], double precision, int, text, text, text, boolean);
 
--- Recreate the match_rounds function with float[] parameter for PostgREST compatibility
+-- Recreate with correct hybrid search logic:
+-- - Metadata filters (team, map, round_type) act as HARD PRE-FILTERS
+-- - Similarity threshold only gates results for PURE SEMANTIC queries
+-- - Results always ordered by semantic similarity for relevance ranking
 CREATE FUNCTION match_rounds (
   query_embedding float[],
   match_threshold float,
@@ -39,7 +43,6 @@ AS $$
 DECLARE
   query_vec vector(768);
 BEGIN
-  -- Cast the float array to vector inside the function
   query_vec := query_embedding::vector(768);
 
   RETURN QUERY
@@ -63,7 +66,14 @@ BEGIN
     1 - (re.embedding <=> query_vec) as similarity
   FROM round_embeddings re
   WHERE
-    (1 - (re.embedding <=> query_vec) > match_threshold)
+    -- Apply threshold ONLY when NO metadata filters are present
+    -- When metadata filters exist, they act as hard pre-filters
+    (
+      (filter_team_slug IS NOT NULL OR filter_map_name IS NOT NULL OR filter_round_type IS NOT NULL OR filter_is_pistol IS NOT NULL)
+      OR
+      (1 - (re.embedding <=> query_vec) > match_threshold)
+    )
+    -- Metadata hard pre-filters
     AND (filter_team_slug IS NULL OR re.winner_slug = filter_team_slug OR re.team_a_slug = filter_team_slug OR re.team_b_slug = filter_team_slug)
     AND (filter_map_name IS NULL OR re.map_name = filter_map_name)
     AND (filter_round_type IS NULL OR re.round_type = filter_round_type)

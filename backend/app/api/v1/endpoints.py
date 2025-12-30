@@ -115,9 +115,11 @@ async def query_matches(request: QueryRequest):
             contents=request.query_text,
             config={"task_type": "RETRIEVAL_QUERY"}
         )
-        query_vector = embed_resp.embeddings[0].values
+        # Convert to plain Python list to ensure proper JSON serialization
+        query_vector = [float(v) for v in embed_resp.embeddings[0].values]
+        logger.info(f"Generated embedding with {len(query_vector)} dimensions")
     except Exception as e:
-        print(f"Embedding failed: {e}")
+        logger.error(f"Embedding failed: {e}")
         query_vector = None
 
     # 3. Execute Search (Supabase Cloud Priority)
@@ -128,7 +130,7 @@ async def query_matches(request: QueryRequest):
             # Prepare RPC parameters - pass all params explicitly
             rpc_params = {
                 "query_embedding": query_vector,
-                "match_threshold": 0.5,
+                "match_threshold": 0.5,  # Only applied when NO metadata filters
                 "match_count": 20,
                 "filter_team_slug": detected_team_slug if detected_team_slug else None,
                 "filter_map_name": detected_map.capitalize() if detected_map else None,
@@ -137,8 +139,11 @@ async def query_matches(request: QueryRequest):
             }
 
             logger.info(f"RPC params: team={rpc_params.get('filter_team_slug')}, map={rpc_params.get('filter_map_name')}, round_type={rpc_params.get('filter_round_type')}")
+            logger.info(f"Embedding length: {len(query_vector)}, first 3 values: {query_vector[:3]}")
             rpc_res = supabase.rpc("match_rounds", rpc_params).execute()
             logger.info(f"RPC returned {len(rpc_res.data)} results")
+            if rpc_res.data:
+                logger.info(f"First result: {rpc_res.data[0].get('team_a')} vs {rpc_res.data[0].get('team_b')}")
 
             for row in rpc_res.data:
                 formatted_results.append({
