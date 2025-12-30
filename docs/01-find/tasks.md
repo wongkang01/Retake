@@ -27,7 +27,14 @@
     - [x] **Tactical Tagging**: Support for thrifty, flawless, and pistol rounds.
 
 ### Phase 3: Production Scaling
-- [ ] **Supabase Migration**: Move to centralized pgvector storage.
+- [x] **Supabase Migration**: Move to centralized pgvector storage.
+    - [x] Create `round_embeddings` table with team names and VOD metadata.
+    - [x] Implement `match_rounds` RPC function with conditional threshold.
+    - [x] Add `team_a`, `team_b`, `vod_timestamp` columns.
+- [x] **Hybrid Search Fix**: Implement correct conditional threshold logic.
+    - [x] Metadata filters act as hard pre-filters (no threshold).
+    - [x] Semantic-only queries gated by 0.5 similarity threshold.
+    - [x] Fix PostgREST compatibility (`float[]` → `vector(768)` cast).
 - [ ] **Matryoshka Hooks**: Implement 768-dim truncation.
 - [ ] **Embedding Cache**: Cache text-to-vector mappings.
 

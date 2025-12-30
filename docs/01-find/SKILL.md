@@ -14,9 +14,17 @@ Maintain and query a high-quality library of tactical round documents. Users que
 ### 3. Data Schemas
 - **Input**: Natural Language Query (e.g., "PRX flawless rounds on Sunset").
 - **Intent**: `{ team_slug: 'paperrex', map: 'Sunset', round_type: 'flawless' }`.
-- **Output**: `MatchResult[]` with `vod_timestamp`, `video_id`, and `score_a/b`.
+- **Output**: `MatchResult[]` with `vod_timestamp`, `video_id`, `team_a`, `team_b`, and `score_a/b`.
 
 ### 4. Operational Constraints
 - **Deduplication**: Always deduplicate results by `round_id` from the source.
-- **Relevance**: Apply a cosine distance threshold of 0.60 to maintain clip quality.
+- **Conditional Threshold**:
+  - **Filtered queries** (team/map/round_type present): No threshold, metadata acts as hard pre-filter
+  - **Semantic queries** (no filters): Apply cosine similarity threshold of 0.5
 - **VOD Precision**: Timestamps must be calculated via `vod_start + (round_gametime - match_start_gametime)`.
+
+### 5. Technical Stack
+- **Database**: Supabase PostgreSQL with pgvector extension (ChromaDB fallback)
+- **Embeddings**: Gemini `text-embedding-004` (768 dimensions)
+- **Search Function**: `match_rounds` RPC with conditional threshold logic
+- **Intent Detection**: Gemini 3 Flash for query parsing

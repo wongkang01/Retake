@@ -23,9 +23,23 @@
    - Search interface for the Champions 2025 Library.
    - Precision VOD player with YouTube iframe API integration.
 
-## Phase 3: Scaling & Optimization (Current)
+## Phase 3: Scaling & Optimization (Completed)
 1. **Database Migration**
-   - Migrate from local ChromaDB to **Supabase (pgvector)** for production access.
-2. **Performance**
+   - Migrated from local ChromaDB to **Supabase (pgvector)** for production access.
+   - Created `round_embeddings` table with team names, slugs, and VOD metadata.
+   - Implemented `match_rounds` RPC function with conditional threshold logic.
+2. **Hybrid Search Fix**
+   - Fixed metadata filters to act as **hard pre-filters** (no threshold when filters present).
+   - Similarity threshold (0.5) now only applies to pure semantic queries.
+   - Resolved PostgREST compatibility by accepting `float[]` and casting to `vector(768)`.
+3. **Data Fidelity**
+   - Added `team_a`, `team_b`, `vod_timestamp` columns to round embeddings.
+   - Fixed VOD URL construction with proper YouTube video ID extraction.
+
+## Phase 4: Future Optimizations
+1. **Performance**
    - Implement Matryoshka learning hooks (3072 -> 768 dim).
    - Add embedding cache to reduce Gemini API costs.
+2. **Advanced Filtering**
+   - Add agent-based filtering support.
+   - Implement round economy/loadout filtering.
