@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 class GeminiEmbeddingFunction(EmbeddingFunction):
-    def __init__(self, api_key: str, model_name: str = "models/text-embedding-004"):
+    def __init__(self, api_key: str, model_name: str = "models/gemini-embedding-001"):
         # The new SDK uses a centralized Client object.
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name
@@ -18,19 +18,15 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
     def __call__(self, input: Documents) -> Embeddings:
         if not input:
             return []
-            
+
         embeddings = []
         # TODO: Implement batching for production efficiency
         for text in input:
             try:
-                # The new SDK method for embeddings
-                # Note: 'task_type' logic might differ in the new SDK or be part of config.
-                # For basic text-embedding-004, simple content passing usually works.
-                # We'll stick to the standard call structure.
                 result = self.client.models.embed_content(
                     model=self.model_name,
                     contents=text,
-                    config={"task_type": "RETRIEVAL_DOCUMENT"} 
+                    config={"task_type": "RETRIEVAL_DOCUMENT", "output_dimensionality": 768}
                 )
                 embeddings.append(result.embeddings[0].values)
             except Exception as e:
@@ -49,7 +45,7 @@ class ChromaService:
             # Updating to the newer model which is standard for the new SDK
             self.embedding_fn = GeminiEmbeddingFunction(
                 api_key=settings.GEMINI_API_KEY,
-                model_name="models/text-embedding-004"
+                model_name="models/gemini-embedding-001"
             )
         else:
             logger.warning("GEMINI_API_KEY not set. Using default ChromaDB embedding.")

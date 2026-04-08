@@ -34,9 +34,9 @@ class IngestionService:
             return None
         try:
             result = self.gemini_client.models.embed_content(
-                model="models/text-embedding-004",
+                model="models/gemini-embedding-001",
                 contents=text,
-                config={"task_type": "RETRIEVAL_DOCUMENT"}
+                config={"task_type": "RETRIEVAL_DOCUMENT", "output_dimensionality": 768}
             )
             return result.embeddings[0].values
         except Exception as e:

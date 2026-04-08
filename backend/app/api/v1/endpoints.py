@@ -111,9 +111,9 @@ async def query_matches(request: QueryRequest):
     # 2. Generate Vector for Query
     try:
         embed_resp = client.models.embed_content(
-            model="models/text-embedding-004",
+            model="models/gemini-embedding-001",
             contents=request.query_text,
-            config={"task_type": "RETRIEVAL_QUERY"}
+            config={"task_type": "RETRIEVAL_QUERY", "output_dimensionality": 768}
         )
         # Convert to plain Python list to ensure proper JSON serialization
         query_vector = [float(v) for v in embed_resp.embeddings[0].values]
