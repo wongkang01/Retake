@@ -127,6 +127,12 @@ async def query_matches(request: QueryRequest):
     
     if supabase and query_vector:
         try:
+            # "pistol" isn't a ceremony in rib.gg — it's a round position (round 1/13)
+            # stored as is_pistol=true with round_type="default". Route pistol detection
+            # to filter_is_pistol only; sending filter_round_type="pistol" matches zero rows.
+            is_pistol_query = detected_round_type == "pistol"
+            filter_round_type = None if is_pistol_query else (detected_round_type.lower() if detected_round_type else None)
+
             # Prepare RPC parameters - pass all params explicitly
             rpc_params = {
                 "query_embedding": query_vector,
@@ -134,8 +140,8 @@ async def query_matches(request: QueryRequest):
                 "match_count": 20,
                 "filter_team_slug": detected_team_slug if detected_team_slug else None,
                 "filter_map_name": detected_map.capitalize() if detected_map else None,
-                "filter_round_type": detected_round_type.lower() if detected_round_type else None,
-                "filter_is_pistol": True if detected_round_type == "pistol" else None
+                "filter_round_type": filter_round_type,
+                "filter_is_pistol": True if is_pistol_query else None
             }
 
             logger.info(f"RPC params: team={rpc_params.get('filter_team_slug')}, map={rpc_params.get('filter_map_name')}, round_type={rpc_params.get('filter_round_type')}")
