@@ -43,6 +43,7 @@ class IngestRequest(BaseModel):
 
 class EventIngestRequest(BaseModel):
     event_url: str
+    vlr_event_url: Optional[str] = None
 
 class UrlIngestRequest(BaseModel):
     url: str
@@ -104,7 +105,7 @@ async def query_matches(request: QueryRequest):
         detected_round_type = intent_data.get("round_type")
 
     except Exception as e:
-        print(f"Intent parsing failed: {e}")
+        logger.warning(f"Intent parsing failed: {e}")
         detected_map = None
         detected_round_type = None
 
@@ -138,7 +139,7 @@ async def query_matches(request: QueryRequest):
                 "query_embedding": query_vector,
                 "match_threshold": 0.5,  # Only applied when NO metadata filters
                 "match_count": 20,
-                "filter_team_slug": detected_team_slug if detected_team_slug else None,
+                "filter_team_slug": detected_team_slug,
                 "filter_map_name": detected_map.capitalize() if detected_map else None,
                 "filter_round_type": filter_round_type,
                 "filter_is_pistol": True if is_pistol_query else None
@@ -267,7 +268,10 @@ async def list_events():
 async def ingest_event(request: EventIngestRequest):
     discovery_service = DiscoveryService()
     try:
-        total_rounds = await discovery_service.ingest_tournament(request.event_url)
+        total_rounds = await discovery_service.ingest_tournament(
+            request.event_url,
+            vlr_event_url=request.vlr_event_url,
+        )
         return {
             "status": "success",
             "message": f"Successfully ingested {total_rounds} rounds from the tournament.",

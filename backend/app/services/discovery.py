@@ -165,13 +165,15 @@ class DiscoveryService:
             logger.error(f"Failed to crawl tournament {event_url}: {e}")
             return [f"{self.base_url}/series/{sid}" for sid in unique_series_ids]
 
-    async def ingest_tournament(self, event_url: str):
+    async def ingest_tournament(self, event_url: str, vlr_event_url: str = None):
         """
         Crawls a tournament and ingests ALL matches found.
+        If vlr_event_url is provided, VLR VOD data is fetched in parallel
+        and used to enrich rounds with YouTube VOD URLs before ingestion.
         """
         from app.services.ingestion import IngestionService
         from app.core.supabase import get_supabase
-        
+
         # 1. Register the Event in Supabase
         event_uuid = None
         supabase = get_supabase()
@@ -179,7 +181,7 @@ class DiscoveryService:
             try:
                 ext_id = event_url.rstrip("/").split("/")[-1]
                 name_slug = event_url.split("/events/")[-1].split("/")[0].replace("-", " ").title()
-                
+
                 event_data = {
                     "external_id": ext_id,
                     "name": name_slug,
@@ -191,18 +193,87 @@ class DiscoveryService:
             except Exception as e:
                 logger.error(f"Event registration failed: {e}")
 
-        # 2. Crawl and Process Matches
+        # 2. Crawl rib.gg and (optionally) fetch VLR VODs in parallel
+        vlr_task = None
+        if vlr_event_url:
+            vlr_task = asyncio.create_task(self._resolve_vlr_vods(vlr_event_url))
+
         urls = await self.crawl_tournament(event_url)
         logger.info(f"Tournament crawler found {len(urls)} series. Starting bulk ingestion...")
-        
+
+        vlr_vod_lookup = {}
+        if vlr_task:
+            try:
+                vlr_vod_lookup = await vlr_task
+                logger.info(f"VLR: resolved VODs for {len(vlr_vod_lookup)} matches")
+            except Exception as e:
+                logger.warning(f"VLR VOD resolution failed, continuing without VODs: {e}")
+
+        # 3. Process and ingest each series, enriching with VLR VODs
         ingestion_service = IngestionService()
         total_rounds = 0
-        
+
         for url in urls:
             rounds = await self.process_series(url)
+            if rounds and vlr_vod_lookup:
+                self._enrich_rounds_with_vods(rounds, vlr_vod_lookup)
             if rounds:
                 ingestion_service.ingest_batch(rounds, common_metadata={"event_id": event_uuid})
                 total_rounds += len(rounds)
-        
+
         logger.info(f"Bulk ingestion complete. Ingested {total_rounds} rounds from {len(urls)} series.")
         return total_rounds
+
+    async def _resolve_vlr_vods(self, vlr_event_url: str) -> dict:
+        """Fetch all VLR match VODs and build a lookup keyed by (team_pair, map_name)."""
+        from app.services.vlr_scraper import fetch_event_matches, fetch_match_vods
+
+        matches = await fetch_event_matches(vlr_event_url)
+        logger.info(f"VLR: found {len(matches)} matches, fetching VODs...")
+
+        sem = asyncio.Semaphore(3)
+        async def fetch_one(m):
+            async with sem:
+                await asyncio.sleep(0.5)
+                return await fetch_match_vods(m["vlr_match_url"])
+
+        results = await asyncio.gather(
+            *[fetch_one(m) for m in matches],
+            return_exceptions=True,
+        )
+
+        # Build lookup: (sorted_team_pair, map_name) → {video_id, start_seconds}
+        lookup = {}
+        for result in results:
+            if isinstance(result, Exception):
+                logger.warning(f"VLR fetch failed: {result}")
+                continue
+            pair = tuple(sorted([result["team_a"], result["team_b"]]))
+            for m in result["maps"]:
+                lookup[(pair, m["map_name"])] = {
+                    "youtube_video_id": m["youtube_video_id"],
+                    "start_seconds": m["start_seconds"],
+                }
+        return lookup
+
+    @staticmethod
+    def _enrich_rounds_with_vods(rounds: list, vlr_lookup: dict):
+        """Fill in vod_url and adjust vod_timestamp for rounds using VLR VOD data."""
+        # VLR team names may differ slightly; try direct match first
+        TEAM_NORMALIZE = {"NRG": "NRG Esports"}
+
+        for r in rounds:
+            if r.get("vod_url"):
+                continue
+            team_a = TEAM_NORMALIZE.get(r["team_a"], r["team_a"])
+            team_b = TEAM_NORMALIZE.get(r["team_b"], r["team_b"])
+            pair = tuple(sorted([team_a, team_b]))
+            vod_info = vlr_lookup.get((pair, r["map_name"]))
+            if not vod_info:
+                continue
+            vid = vod_info["youtube_video_id"]
+            map_start = vod_info["start_seconds"]
+            rel_offset = r.get("vod_timestamp") or 0
+            abs_t = map_start + rel_offset
+            r["vod_url"] = f"https://www.youtube.com/watch?v={vid}&t={abs_t}s"
+            r["vod_timestamp"] = abs_t
